@@ -1,6 +1,11 @@
 from abc import ABC, abstractmethod
 import requests
-from typing import Dict
+from typing import List, Dict, Optional, Any
+import json
+import csv
+import os
+from datetime import datetime
+from functools import total_ordering
 
 
 class AbstractAPIClient(ABC):
@@ -103,3 +108,90 @@ class OpenSkyAPI(AbstractAPIClient):
         response.raise_for_status()
 
         return response.json()
+
+
+class Aircraft:
+    """Класс, представляющий информацию о самолете"""
+
+    def __init__(self, callsign: str, origin_country: str, velocity: float, baro_altitude: float):
+        self._callsign = self._validate_callsign(callsign)
+        self._origin_country = self._validate_country(origin_country)
+        self._velocity = self._validate_velocity(velocity)
+        self._baro_altitude = self._validate_altitude(baro_altitude)
+
+    def _validate_callsign(self, callsign: str) -> str:
+        """Валидация позывного"""
+        if not isinstance(callsign, str):
+            raise TypeError(f"Позывной должен быть строкой, получено: {type(callsign)}")
+        if not callsign or not callsign.strip():
+            raise ValueError("Позывной не может быть пустым")
+        return callsign.strip()
+
+    def _validate_country(self, country: str) -> str:
+        """Валидация страны регистрации"""
+        if not isinstance(country, str):
+            raise TypeError(f"Страна должна быть строкой, получено: {type(country)}")
+        if not country or not country.strip():
+            raise ValueError("Страна регистрации не может быть пустой")
+        return country.strip()
+
+    def _validate_velocity(self, velocity: float) -> float:
+        """Валидация скорости полета"""
+        if not isinstance(velocity, (int, float)):
+            raise TypeError(f"Скорость должна быть числом, получено: {type(velocity)}")
+        if velocity < 0:
+            raise ValueError(f"Скорость не может быть отрицательной: {velocity}")
+        return float(velocity)
+
+    def _validate_altitude(self, altitude: float) -> float:
+        """Валидация высоты полета"""
+        if not isinstance(altitude, (int, float)):
+            raise TypeError(f"Высота должна быть числом, получено: {type(altitude)}")
+        if altitude < 0:
+            raise ValueError(f"Высота не может быть отрицательной: {altitude}")
+        return float(altitude)
+
+    def __eq__(self, other: 'Aircraft') -> bool:
+        """Сравнение на равенство по скорости и высоте"""
+        if not isinstance(other, Aircraft):
+            return NotImplemented
+        return (abs(self._velocity - other._velocity) < 0.01 and
+                abs(self._baro_altitude - other._baro_altitude) < 0.01)
+
+    def __lt__(self, other: 'Aircraft') -> bool:
+        """Сравнение "меньше чем" (сначала по скорости, потом по высоте)"""
+
+        if not isinstance(other, Aircraft):
+            return NotImplemented
+
+        # Сравниваем по скорости
+        if abs(self._velocity - other._velocity) >= 0.01:
+            return self._velocity < other._velocity
+
+        # Если скорости равны, сравниваем по высоте
+        return self._baro_altitude < other._baro_altitude
+
+    def compare_velocity(self, other: 'Aircraft') -> int:
+        """Сравнение только по скорости"""
+
+        if not isinstance(other, Aircraft):
+            raise TypeError(f"Нельзя сравнить с {type(other)}")
+
+        if abs(self._velocity - other._velocity) < 0.01:
+            return 0
+        return -1 if self._velocity < other._velocity else 1
+
+    def compare_altitude(self, other: 'Aircraft') -> int:
+        """Сравнение только по высоте"""
+
+        if not isinstance(other, Aircraft):
+            raise TypeError(f"Нельзя сравнить с {type(other)}")
+
+        if abs(self._baro_altitude - other._baro_altitude) < 0.01:
+            return 0
+        return -1 if self._baro_altitude < other._baro_altitude else 1
+
+
+    def __str__(self) -> str:
+        return (f"Самолет {self._callsign} ({self._origin_country}): "
+                f"скорость {self._velocity} м/с, высота {self._baro_altitude} м")
