@@ -43,35 +43,37 @@ class NominatimAPI(AbstractAPIClient):
             return self._connected
 
 
-def get_data(self, country: str = "", **kwargs) -> Dict:
-    """Получение географических координат страны"""
+    def get_data(self, country: str = "", **kwargs) -> Dict:
 
-    if not self._connected:
-        self.connect()
+        """Получение географических координат страны"""
 
-    params = {
-        'country': country,
-        'format': 'json',
-        'limit': 1,
-    }
+        if not self._connected:
+            self.connect()
 
-    response = requests.get(self.base_url, params=params, headers=self.headers)
-    response.raise_for_status()
+        params = {
+            'country': country,
+            'format': 'json',
+            'limit': 1,
+        }
 
-    data = response.json()
+        response = requests.get(self.base_url, params=params, headers=self.headers)
+        response.raise_for_status()
 
-    if not data:
-        return {}
+        data = response.json()
 
-    bounding_box = data[0].get('boundingbox', [])
+        if not data:
+         return {}
 
-    return {
-        'country': country,
-        'south': float(bounding_box[0]),
-        'north': float(bounding_box[1]),
-        'west': float(bounding_box[2]),
-        'east': float(bounding_box[3]),
-    }
+        bounding_box = data[0].get('boundingbox', [])
+
+        return {
+            'country': country,
+            'south': float(bounding_box[0]),
+            'north': float(bounding_box[1]),
+            'west': float(bounding_box[2]),
+            'east': float(bounding_box[3]),
+
+        }
 
 
 class OpenSkyAPI(AbstractAPIClient):
@@ -109,7 +111,7 @@ class OpenSkyAPI(AbstractAPIClient):
 
         return response.json()
 
-
+@total_ordering
 class Aircraft:
     """Класс, представляющий информацию о самолете"""
 
@@ -191,7 +193,148 @@ class Aircraft:
             return 0
         return -1 if self._baro_altitude < other._baro_altitude else 1
 
+    def to_dict(self) -> Dict[str, Any]:
+        """Преобразование в словарь для сохранения"""
+        return {
+            'callsign': self._callsign,
+            'origin_country': self._origin_country,
+            'velocity': self._velocity,
+            'baro_altitude': self._baro_altitude,
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'Aircraft':
+        """Создание объекта из словаря"""
+        return cls(
+            callsign=data['callsign'],
+            origin_country=data['origin_country'],
+            velocity=data['velocity'],
+            baro_altitude=data['baro_altitude'],
+        )
+
+    @classmethod
+    def from_api_response(cls, state: List[Any]) -> 'Aircraft':
+        """Создание объекта из ответа OpenSky API"""
+        callsign = state[1].strip() if state[1] else "UNKNOWN"
+        origin_country = state[2] if state[2] else "Unknown"
+        velocity = float(state[9]) if state[9] is not None else 0.0
+        baro_altitude = float(state[7]) if state[7] is not None else 0.0
+
+        return cls(
+            callsign=callsign,
+            origin_country=origin_country,
+            velocity=velocity,
+            baro_altitude=baro_altitude,
+        )
 
     def __str__(self) -> str:
         return (f"Самолет {self._callsign} ({self._origin_country}): "
                 f"скорость {self._velocity} м/с, высота {self._baro_altitude} м")
+
+
+class AbstractFileManager(ABC):
+    """Абстрактный класс для работы с хранилищем данных"""
+
+    @abstractmethod
+    def add_aircraft(self, aircraft: Aircraft) -> None:
+        """Добавление информации о самолете"""
+        pass
+
+    @abstractmethod
+    def get_aircraft_by_country(self, country: str) -> List[Aircraft]:
+        """Получение самолетов по стране регистрации"""
+        pass
+
+    @abstractmethod
+    def delete_aircraft(self, callsign: str) -> None:
+        """Удаление информации о самолете"""
+        pass
+
+    @abstractmethod
+    def get_all_aircraft(self) -> List[Aircraft]:
+        """Получение всех самолетов"""
+        pass
+
+
+class JSONFileManager(AbstractFileManager):
+    """Класс для работы с JSON-файлом"""
+
+    def __init__(self, filename: str = "aircraft_data.json"):
+        self.filename = filename
+        self._ensure_file_exists()
+
+    def _ensure_file_exists(self) -> None:
+        """Создание файла, если он не существует"""
+        if not os.path.exists(self.filename):
+            with open(self.filename, 'w', encoding='utf-8') as f:
+                json.dump([], f)
+
+    def _load_data(self) -> List[Dict]:
+        """Загрузка данных из файла"""
+        try:
+            with open(self.filename, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except (json.JSONDecodeError, FileNotFoundError):
+            return []
+
+    def _save_data(self, data: List[Dict]) -> None:
+        """Сохранение данных в файл"""
+        with open(self.filename, 'w', encoding='utf-8') as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+
+    def add_aircraft(self, aircraft: Aircraft) -> None:
+        """Добавление самолета в файл"""
+        data = self._load_data()
+        aircraft_dict = aircraft.to_dict()
+        self._save_data(data)
+        found = False
+        for i, item in enumerate(data):
+            if item.get('callsign') == aircraft.callsign:
+                data[i] = aircraft_dict
+                found = True
+                break
+
+        if not found:
+            data.append(aircraft_dict)
+
+        self._save_data(data)
+
+    def get_aircraft_by_country(self, country: str) -> List[Aircraft]:
+        """Получение самолетов по стране регистрации"""
+        data = self._load_data()
+        result = []
+
+        for item in data:
+            if item.get('origin_country', '').lower() == country.lower():
+                result.append(Aircraft.from_dict(item))
+
+        return result
+
+    def delete_aircraft(self, callsign: str) -> None:
+        """Удаление самолета по позывному"""
+        data = self._load_data()
+        data = [item for item in data if item.get('callsign') != callsign]
+        self._save_data(data)
+
+    def get_all_aircraft(self) -> List[Aircraft]:
+        """Получение всех самолетов из файла"""
+        data = self._load_data()
+        return [Aircraft.from_dict(item) for item in data]
+
+
+class DatabaseFileManager(AbstractFileManager):
+    """Заглушка для будущей интеграции с базой данных"""
+
+    def __init__(self, connection_string: str = ""):
+        self.connection_string = connection_string
+        print("Warning: DatabaseFileManager is not implemented yet")
+
+    def add_aircraft(self, aircraft: Aircraft) -> None:
+        raise NotImplementedError("Database integration not implemented yet")
+
+    def get_aircraft_by_country(self, country: str) -> List[Aircraft]:
+        raise NotImplementedError("Database integration not implemented yet")
+
+    def delete_aircraft(self, callsign: str) -> None:
+        raise NotImplementedError("Database integration not implemented yet")
+
