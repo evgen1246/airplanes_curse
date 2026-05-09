@@ -1,10 +1,8 @@
 from abc import ABC, abstractmethod
 import requests
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Any
 import json
-import csv
 import os
-from datetime import datetime
 from functools import total_ordering
 
 
@@ -338,3 +336,183 @@ class DatabaseFileManager(AbstractFileManager):
     def delete_aircraft(self, callsign: str) -> None:
         raise NotImplementedError("Database integration not implemented yet")
 
+
+class AircraftTracker:
+    """Основной класс для отслеживания самолетов"""
+
+    def __init__(self, storage: AbstractFileManager = None):
+        self.nominatim_api = NominatimAPI()
+        self.opensky_api = OpenSkyAPI()
+        self.storage = storage or JSONFileManager()
+
+    def fetch_aircraft_by_country(self, country: str) -> List[Aircraft]:
+        """Получение самолетов над указанной страной"""
+
+        # Получаем координаты страны
+        country_data = self.nominatim_api.get_data(country=country)
+
+        if not country_data:
+            print(f"Страна '{country}' не найдена")
+            return []
+
+        # Получаем данные о самолетах
+        aircraft_data = self.opensky_api.get_data(
+            lamin=country_data['south'],
+            lamax=country_data['north'],
+            lomin=country_data['west'],
+            lomax=country_data['east'],
+        )
+
+        # Преобразуем в объекты Aircraft
+        aircraft_list = []
+        if aircraft_data.get('states'):
+            for state in aircraft_data['states']:
+                try:
+                    aircraft = Aircraft.from_api_response(state)
+                    aircraft_list.append(aircraft)
+                    # Сохраняем в хранилище
+                    self.storage.add_aircraft(aircraft)
+                except (ValueError, TypeError) as e:
+                    print(f"Ошибка при создании объекта Aircraft: {e}")
+
+        return aircraft_list
+
+    def get_top_by_altitude(self, n: int = 10) -> List[Aircraft]:
+        """Получение топ N самолетов по высоте"""
+        all_aircraft = self.storage.get_all_aircraft()
+
+        # Сортируем по высоте (по убыванию)
+        sorted_aircraft = sorted(all_aircraft,
+                                 key=lambda x: x.baro_altitude,
+                                 reverse=True)
+
+        return sorted_aircraft[:n]
+
+    def get_aircraft_by_registration(self, country: str) -> List[Aircraft]:
+        """Получение самолетов по стране регистрации"""
+        return self.storage.get_aircraft_by_country(country)
+
+
+def user_interface():
+    """Функция для взаимодействия с пользователем через консоль."""
+
+    print("=" * 50)
+    print("  СИСТЕМА ОТСЛЕЖИВАНИЯ САМОЛЕТОВ")
+    print("=" * 50)
+
+    # Создаем объект для работы с API и данными
+    tracker = AircraftTracker()
+
+    while True:
+        print("\n" + "=" * 50)
+        print("ГЛАВНОЕ МЕНЮ")
+        print("=" * 50)
+        print("1. Запросить информацию о самолетах над страной")
+        print("2. Получить топ N самолетов по высоте полета")
+        print("3. Получить самолеты по стране регистрации")
+        print("4. Выход")
+        print("-" * 50)
+
+        choice = input("Выберите действие (1-4): ").strip()
+
+        # 1:Запрос самолетов над страной
+        if choice == "1":
+            print("\n--- Запрос информации о самолетах над страной ---")
+            country = input("Введите название страны (например, Russia, USA, France): ").strip()
+
+            if not country:
+                print("[ОШИБКА] Название страны не может быть пустым!")
+                continue
+
+            print(f"\nВыполняется запрос к opensky-network.org для страны: {country}")
+            print("Пожалуйста, подождите...")
+
+            try:
+                aircraft_list = tracker.fetch_aircraft_by_country(country)
+
+                if aircraft_list:
+                    print(f"\n✓ Найдено самолетов: {len(aircraft_list)}")
+                    print("-" * 50)
+                    for i, aircraft in enumerate(aircraft_list, 1):
+                        print(f"{i:3d}. {aircraft}")
+                    print("-" * 50)
+                    print(f"Данные сохранены в файл aircraft_data.json")
+                else:
+                    print(f"\n✗ Самолеты над страной '{country}' не найдены")
+                    print("Возможные причины:")
+                    print("  - Неправильное название страны")
+                    print("  - В данный момент нет самолетов в воздушном пространстве")
+                    print("  - Проблемы с подключением к API")
+
+            except Exception as e:
+                print(f"\n[ОШИБКА] Не удалось получить данные: {e}")
+
+        # 2: Топ N самолетов по высоте
+        elif choice == "2":
+            print("\n--- Получение топа самолетов по высоте полета ---")
+
+            try:
+                n_input = input("Введите количество самолетов для отображения (N): ").strip()
+                n = int(n_input)
+
+                if n <= 0:
+                    print("[ОШИБКА] Количество должно быть больше нуля!")
+                    continue
+
+                print(f"\nПоиск топ-{n} самолетов по высоте полета...")
+                top_aircraft = tracker.get_top_by_altitude(n)
+
+                if top_aircraft:
+                    print(f"\n✓ Топ-{len(top_aircraft)} самолетов по высоте полета:")
+                    print("-" * 50)
+                    print(f"{'№':3s} {'Позывной':10s} {'Страна':15s} {'Высота (м)':12s} {'Скорость (м/с)':15s}")
+                    print("-" * 50)
+
+                    for i, aircraft in enumerate(top_aircraft, 1):
+                        print(f"{i:3d} {aircraft.callsign:10s} {aircraft.origin_country:15s} "
+                              f"{aircraft.baro_altitude:12.1f} {aircraft.velocity:15.1f}")
+                    print("-" * 50)
+                else:
+                    print("\n✗ Нет данных о самолетах!")
+                    print("Сначала выполните действие 1 для получения информации о самолетах.")
+
+            except ValueError:
+                print("[ОШИБКА] Пожалуйста, введите целое положительное число!")
+
+        # 3: Поиск по стране регистрации
+        elif choice == "3":
+            print("\n--- Получение самолетов по стране регистрации ---")
+            country = input("Введите страну регистрации (например, Russia, USA, Germany): ").strip()
+
+            if not country:
+                print("[ОШИБКА] Страна регистрации не может быть пустой!")
+                continue
+
+            print(f"\nПоиск самолетов с регистрацией в стране: {country}...")
+            aircraft_list = tracker.get_aircraft_by_registration(country)
+
+            if aircraft_list:
+                print(f"\n✓ Найдено самолетов из {country}: {len(aircraft_list)}")
+                print("-" * 50)
+                for i, aircraft in enumerate(aircraft_list, 1):
+                    print(f"{i:3d}. Позывной: {aircraft.callsign}, "
+                          f"Высота: {aircraft.baro_altitude} м, "
+                          f"Скорость: {aircraft.velocity} м/с")
+                print("-" * 50)
+            else:
+                print(f"\n✗ Самолеты с регистрацией в '{country}' не найдены")
+                print("Сначала выполните действие 1 для получения информации о самолетах.")
+
+        # 4: Выход
+        elif choice == "4":
+            print("\n" + "=" * 50)
+            print("  Завершение работы программы")
+            print("=" * 50)
+            print(f"Данные сохранены в файл: aircraft_data.json")
+            print("До свидания!")
+            break
+
+        else:
+            print("\n[ОШИБКА] Неверный выбор! Введите число от 1 до 4.")
+
+    return 0
