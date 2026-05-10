@@ -1,10 +1,11 @@
 from typing import List
-from aircraft import Aircraft
+
+from src.aircraft import Aircraft
 
 
 def filter_aeroplanes(aeroplanes: List[Aircraft], countries: List[str]) -> List[Aircraft]:
-    """Фильтрация самолетов по странам регистрации """
-    if not countries or countries == ['']:
+    """Фильтрация самолетов по странам регистрации"""
+    if not countries or countries == [""]:
         return aeroplanes
 
     filtered = []
@@ -15,14 +16,13 @@ def filter_aeroplanes(aeroplanes: List[Aircraft], countries: List[str]) -> List[
     return filtered
 
 
-def get_aeroplanes_by_altitude(aeroplanes: List[Aircraft],
-                               altitude_range: str) -> List[Aircraft]:
+def get_aeroplanes_by_altitude(aeroplanes: List[Aircraft], altitude_range: str) -> List[Aircraft]:
     """Фильтрация самолетов по диапазону высот"""
-    if not altitude_range or '-' not in altitude_range:
+    if not altitude_range or "-" not in altitude_range:
         return aeroplanes
 
     try:
-        parts = altitude_range.split('-')
+        parts = altitude_range.split("-")
         min_altitude = float(parts[0].strip())
         max_altitude = float(parts[1].strip())
 
@@ -32,13 +32,12 @@ def get_aeroplanes_by_altitude(aeroplanes: List[Aircraft],
                 filtered.append(aircraft)
 
         return filtered
-    except (ValueError, IndexError):
+    except ValueError, IndexError:
         print("Неверный формат диапазона высот. Используйте формат: мин-макс")
         return aeroplanes
 
 
-def sort_aeroplanes(aeroplanes: List[Aircraft],
-                    reverse: bool = True) -> List[Aircraft]:
+def sort_aeroplanes(aeroplanes: List[Aircraft], reverse: bool = True) -> List[Aircraft]:
     """Сортировка самолетов по высоте"""
     return sorted(aeroplanes, key=lambda x: x.baro_altitude, reverse=reverse)
 
@@ -59,8 +58,10 @@ def print_aeroplanes(aeroplanes: List[Aircraft]) -> None:
     print(f"{'=' * 60}")
 
     for i, aircraft in enumerate(aeroplanes, 1):
-        print(f"{i:4d} {aircraft.callsign:12s} {aircraft.origin_country:20s} "
-              f"{aircraft.baro_altitude:12.1f} {aircraft.velocity:15.1f}")
+        print(
+            f"{i:4d} {aircraft.callsign:12s} {aircraft.origin_country:20s} "
+            f"{aircraft.baro_altitude:12.1f} {aircraft.velocity:15.1f}"
+        )
 
     print(f"{'=' * 60}")
     print(f"Всего самолетов: {len(aeroplanes)}")

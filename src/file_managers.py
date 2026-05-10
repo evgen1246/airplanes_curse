@@ -1,8 +1,9 @@
-from abc import ABC, abstractmethod
-from typing import List, Dict
 import json
 import os
-from aircraft import Aircraft
+from abc import ABC, abstractmethod
+from typing import Any, Dict, List
+
+from src.aircraft import Aircraft
 
 
 class AbstractFileManager(ABC):
@@ -39,20 +40,21 @@ class JSONSaver(AbstractFileManager):
     def _ensure_file_exists(self) -> None:
         """Создание файла, если он не существует"""
         if not os.path.exists(self.filename):
-            with open(self.filename, 'w', encoding='utf-8') as f:
+            with open(self.filename, "w", encoding="utf-8") as f:
                 json.dump([], f)
 
-    def _load_data(self) -> List[Dict]:
+    def _load_data(self) -> List[Dict[str, Any]]:
         """Загрузка данных из файла"""
         try:
-            with open(self.filename, 'r', encoding='utf-8') as f:
-                return json.load(f)
-        except (json.JSONDecodeError, FileNotFoundError):
+            with open(self.filename, "r", encoding="utf-8") as f:
+                data: List[Dict[str, Any]] = json.load(f)
+                return data
+        except json.JSONDecodeError, FileNotFoundError:
             return []
 
     def _save_data(self, data: List[Dict]) -> None:
         """Сохранение данных в файл"""
-        with open(self.filename, 'w', encoding='utf-8') as f:
+        with open(self.filename, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
 
     def add_aircraft(self, aircraft: Aircraft) -> None:
@@ -63,7 +65,7 @@ class JSONSaver(AbstractFileManager):
         # Проверка на дубликаты по позывному
         found = False
         for i, item in enumerate(data):
-            if item.get('callsign') == aircraft.callsign:
+            if item.get("callsign") == aircraft.callsign:
                 data[i] = aircraft_dict
                 found = True
                 break
@@ -79,15 +81,15 @@ class JSONSaver(AbstractFileManager):
         result = []
 
         for item in data:
-            if item.get('origin_country', '').lower() == country.lower():
+            if item.get("origin_country", "").lower() == country.lower():
                 result.append(Aircraft.from_dict(item))
 
         return result
 
-    def delete_aircraft(self, aircraft: Aircraft) -> None:
+    def delete_aircraft(self, callsign: str) -> None:
         """Удаление информации о самолете"""
         data = self._load_data()
-        data = [item for item in data if item.get('callsign') != aircraft.callsign]
+        data = [item for item in data if item.get("callsign") != callsign]
         self._save_data(data)
 
     def get_all_aircraft(self) -> List[Aircraft]:

@@ -1,11 +1,11 @@
-from api_clients import AeroplanesAPI
-from aircraft import Aircraft
-from file_managers import JSONSaver
-from utils import (filter_aeroplanes, get_aeroplanes_by_altitude,
-                   sort_aeroplanes, get_top_aeroplanes, print_aeroplanes)
+from src.aircraft import Aircraft
+from src.api_clients import AeroplanesAPI
+from src.file_managers import JSONSaver
+from src.utils import (filter_aeroplanes, get_aeroplanes_by_altitude, get_top_aeroplanes, print_aeroplanes,
+                       sort_aeroplanes)
 
 
-def user_interaction():
+def user_interaction() -> None:
     """Функция для взаимодействия с пользователем"""
 
     print("=" * 60)
@@ -96,8 +96,9 @@ def user_interaction():
                 print("\n[ОШИБКА] Сначала получите данные о самолетах (пункт 1)")
                 continue
 
-            filter_input = input("\nВведите названия стран для фильтрации "
-                                 "(через пробел, например: Spain USA): ").strip()
+            filter_input = input(
+                "\nВведите названия стран для фильтрации " "(через пробел, например: Spain USA): "
+            ).strip()
             filter_words = filter_input.split() if filter_input else []
 
             filtered_aeroplanes = filter_aeroplanes(aeroplanes, filter_words)
@@ -111,8 +112,7 @@ def user_interaction():
                 print("\n[ОШИБКА] Сначала получите данные о самолетах (пункт 1)")
                 continue
 
-            altitude_range = input("\nВведите диапазон высот полета "
-                                   "(например: 1000-5000): ").strip()
+            altitude_range = input("\nВведите диапазон высот полета " "(например: 1000-5000): ").strip()
 
             ranged_aeroplanes = get_aeroplanes_by_altitude(aeroplanes, altitude_range)
 
@@ -136,7 +136,7 @@ def user_interaction():
             for aircraft in aeroplanes:
                 json_saver.add_aircraft(aircraft)
 
-            print(f"\n✓ Данные сохранены в файл aircraft_data.json")
+            print("\n✓ Данные сохранены в файл aircraft_data.json")
             print(f"  Всего сохранено: {len(aeroplanes)} самолетов")
 
         elif choice == "7":
@@ -151,7 +151,7 @@ def user_interaction():
             print("\n[ОШИБКА] Неверный выбор! Введите число от 1 до 7.")
 
 
-def main():
+def main() -> int:
     """Главная функция"""
     print("Запуск системы отслеживания самолетов...")
     print("Используемые API:")
@@ -172,5 +172,3 @@ def main():
 if __name__ == "__main__":
     exit_code = main()
     exit(exit_code)
-
-

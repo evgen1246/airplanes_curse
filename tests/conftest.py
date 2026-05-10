@@ -1,7 +1,8 @@
-import pytest
 import json
 import os
 import tempfile
+
+import pytest
 
 from src.aircraft import Aircraft
 
@@ -9,12 +10,7 @@ from src.aircraft import Aircraft
 @pytest.fixture
 def sample_aircraft():
     """Тестовый самолёт"""
-    return Aircraft(
-        callsign="UAL123",
-        origin_country="United States",
-        velocity=250.5,
-        baro_altitude=10000.0
-    )
+    return Aircraft(callsign="UAL123", origin_country="United States", velocity=250.5, baro_altitude=10000.0)
 
 
 @pytest.fixture
@@ -32,21 +28,16 @@ def sample_aircraft_list():
 @pytest.fixture
 def sample_nominatim_response():
     """Пример ответа от Nominatim API"""
-    return [{
-        "boundingbox": ["40.0", "50.0", "-130.0", "-60.0"],
-        "display_name": "Test Country"
-    }]
+    return [{"boundingbox": ["40.0", "50.0", "-130.0", "-60.0"], "display_name": "Test Country"}]
 
 
 @pytest.fixture
 def sample_api_response():
     """Ответ от OpenSky API"""
     return {
-        'states': [
-            ["abc123", "UAL123 ", "United States", 1609459200, 1609459200,
-             37.6173, 55.7558, 10000.0, False, 250.5],
-            ["def456", "AFL456 ", "USA", 1609459200, 1609459200,
-             37.6173, 55.7558, 8500.0, False, 220.0],
+        "states": [
+            ["abc123", "UAL123 ", "United States", 1609459200, 1609459200, 37.6173, 55.7558, 10000.0, False, 250.5],
+            ["def456", "AFL456 ", "USA", 1609459200, 1609459200, 37.6173, 55.7558, 8500.0, False, 220.0],
         ]
     }
 
@@ -54,11 +45,11 @@ def sample_api_response():
 @pytest.fixture
 def temp_json_file():
     """Создание временного JSON файла"""
-    fd, path = tempfile.mkstemp(suffix='.json')
+    fd, path = tempfile.mkstemp(suffix=".json")
     os.close(fd)
 
     # Создание пустого JSON файла
-    with open(path, 'w', encoding='utf-8') as f:
+    with open(path, "w", encoding="utf-8") as f:
         json.dump([], f)
 
     yield path

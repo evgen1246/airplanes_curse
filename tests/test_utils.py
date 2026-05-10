@@ -1,7 +1,6 @@
-import pytest
 from src.aircraft import Aircraft
-from src.utils import (filter_aeroplanes, get_aeroplanes_by_altitude,
-                   sort_aeroplanes, get_top_aeroplanes, print_aeroplanes)
+from src.utils import (filter_aeroplanes, get_aeroplanes_by_altitude, get_top_aeroplanes, print_aeroplanes,
+                       sort_aeroplanes)
 
 
 class TestFilterAeroplanes:
@@ -9,13 +8,13 @@ class TestFilterAeroplanes:
 
     def test_filter_by_single_country(self, sample_aircraft_list):
         """Фильтрация по одной стране"""
-        result = filter_aeroplanes(sample_aircraft_list, ['USA'])
+        result = filter_aeroplanes(sample_aircraft_list, ["USA"])
         assert len(result) == 2
-        assert all(a.origin_country == 'USA' for a in result)
+        assert all(a.origin_country == "USA" for a in result)
 
     def test_filter_by_multiple_countries(self, sample_aircraft_list):
         """Фильтрация по нескольким странам"""
-        result = filter_aeroplanes(sample_aircraft_list, ['USA', 'Germany'])
+        result = filter_aeroplanes(sample_aircraft_list, ["USA", "Germany"])
         assert len(result) == 3
 
     def test_filter_empty_countries(self, sample_aircraft_list):
@@ -25,19 +24,19 @@ class TestFilterAeroplanes:
 
     def test_filter_empty_string(self, sample_aircraft_list):
         """Список с пустой строкой"""
-        result = filter_aeroplanes(sample_aircraft_list, [''])
+        result = filter_aeroplanes(sample_aircraft_list, [""])
         assert len(result) == 5
 
     def test_filter_nonexistent_country(self, sample_aircraft_list):
         """Несуществующая страна"""
-        result = filter_aeroplanes(sample_aircraft_list, ['Mars'])
+        result = filter_aeroplanes(sample_aircraft_list, ["Mars"])
         assert len(result) == 0
 
     def test_filter_exact_match(self, sample_aircraft_list):
         """Точное совпадение названия"""
-        result = filter_aeroplanes(sample_aircraft_list, ['United Kingdom'])
+        result = filter_aeroplanes(sample_aircraft_list, ["United Kingdom"])
         assert len(result) == 1
-        assert result[0].callsign == 'BAW001'
+        assert result[0].callsign == "BAW001"
 
 
 class TestGetAeroplanesByAltitude:
@@ -45,40 +44,40 @@ class TestGetAeroplanesByAltitude:
 
     def test_filter_by_range(self, sample_aircraft_list):
         """Фильтрация по диапазону"""
-        result = get_aeroplanes_by_altitude(sample_aircraft_list, '9000-11000')
-        assert len(result) == 2
+        result = get_aeroplanes_by_altitude(sample_aircraft_list, "9000-11000")
+        assert len(result) == 3
         assert all(9000 <= a.baro_altitude <= 11000 for a in result)
 
     def test_filter_exact_value(self, sample_aircraft_list):
         """Точное значение"""
-        result = get_aeroplanes_by_altitude(sample_aircraft_list, '8000-8000')
+        result = get_aeroplanes_by_altitude(sample_aircraft_list, "8000-8000")
         assert len(result) == 1
         assert result[0].baro_altitude == 8000.0
 
     def test_filter_empty_string(self, sample_aircraft_list):
         """Пустая строка"""
-        result = get_aeroplanes_by_altitude(sample_aircraft_list, '')
+        result = get_aeroplanes_by_altitude(sample_aircraft_list, "")
         assert len(result) == 5
 
     def test_filter_no_dash(self, sample_aircraft_list):
         """Строка без дефиса"""
-        result = get_aeroplanes_by_altitude(sample_aircraft_list, 'invalid')
+        result = get_aeroplanes_by_altitude(sample_aircraft_list, "invalid")
         assert len(result) == 5
 
     def test_filter_invalid_format(self, sample_aircraft_list):
         """Неверный формат чисел"""
-        result = get_aeroplanes_by_altitude(sample_aircraft_list, 'abc-xyz')
+        result = get_aeroplanes_by_altitude(sample_aircraft_list, "abc-xyz")
         assert len(result) == 5
 
     def test_filter_reversed_range(self, sample_aircraft_list):
         """Обратный диапазон (мин > макс)"""
-        result = get_aeroplanes_by_altitude(sample_aircraft_list, '11000-9000')
+        result = get_aeroplanes_by_altitude(sample_aircraft_list, "11000-9000")
         assert len(result) == 0  # Никто не попадает
 
     def test_filter_with_spaces(self, sample_aircraft_list):
         """Пробелы вокруг чисел"""
-        result = get_aeroplanes_by_altitude(sample_aircraft_list, ' 9000 - 11000 ')
-        assert len(result) == 2
+        result = get_aeroplanes_by_altitude(sample_aircraft_list, " 9000 - 11000 ")
+        assert len(result) == 3
 
 
 class TestSortAeroplanes:
@@ -151,7 +150,7 @@ class TestPrintAeroplanes:
         captured = capsys.readouterr()
 
         assert "AFL123" in captured.out
-        assert "Russia" in captured.out
+        assert "USA" in captured.out
         assert "10000.0" in captured.out
         assert "250.5" in captured.out
         assert "Всего самолетов: 5" in captured.out

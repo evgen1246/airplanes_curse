@@ -20,7 +20,6 @@ class TestAircraftInit:
         aircraft = Aircraft("  UAL123  ", "United States", 250.5, 10000.0)
         assert aircraft.callsign == "UAL123"
 
-
     def test_create_with_zero_values(self):
         """Тест создания с нулевыми значениями"""
         aircraft = Aircraft("TEST", "USA", 0.0, 0.0)
@@ -175,24 +174,24 @@ class TestAircraftSerialization:
         data = aircraft.to_dict()
 
         assert data == {
-            'callsign': 'UAL123',
-            'origin_country': 'United States',
-            'velocity': 250.5,
-            'baro_altitude': 10000.0,
+            "callsign": "UAL123",
+            "origin_country": "United States",
+            "velocity": 250.5,
+            "baro_altitude": 10000.0,
         }
 
     def test_from_dict(self):
         """Тест создания из словаря"""
         data = {
-            'callsign': 'UAL123',
-            'origin_country': 'United States',
-            'velocity': 250.5,
-            'baro_altitude': 10000.0,
+            "callsign": "UAL123",
+            "origin_country": "United States",
+            "velocity": 250.5,
+            "baro_altitude": 10000.0,
         }
         aircraft = Aircraft.from_dict(data)
 
-        assert aircraft.callsign == 'UAL123'
-        assert aircraft.origin_country == 'United States'
+        assert aircraft.callsign == "UAL123"
+        assert aircraft.origin_country == "United States"
         assert aircraft.velocity == 250.5
         assert aircraft.baro_altitude == 10000.0
 
@@ -209,7 +208,7 @@ class TestAircraftCastToList:
 
     def test_cast_to_object_list(self, sample_api_response):
         """Тест преобразования ответа API в список объектов"""
-        result = Aircraft.cast_to_object_list(sample_api_response['states'])
+        result = Aircraft.cast_to_object_list(sample_api_response["states"])
 
         assert len(result) == 2
         assert result[0].callsign == "UAL123"
@@ -221,7 +220,6 @@ class TestAircraftCastToList:
         """Тест с пустым списком"""
         result = Aircraft.cast_to_object_list([])
         assert result == []
-
 
     def test_cast_to_object_list_with_errors(self, capsys):
         """Тест с некорректными данными"""
@@ -253,5 +251,3 @@ class TestAircraftStringRepresentation:
 
         assert "Aircraft" in result
         assert "UAL123" in result
-
-
