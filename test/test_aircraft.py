@@ -253,3 +253,5 @@ class TestAircraftStringRepresentation:
 
         assert "Aircraft" in result
         assert "UAL123" in result
+
+
